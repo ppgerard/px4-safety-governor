@@ -26,8 +26,8 @@ setup(
     entry_points={
         'console_scripts': [
                 'visualizer = px4_offboard.visualizer:main',
-                'safety_governor = px4_offboard.safety_governor:main',
-                'safety_governor_no_avoidance = px4_offboard.safety_governor_no_avoidance:main',
+    'safety_governor = px4_offboard.safety_governor:main',
+    'safety_governor_no_avoidance = px4_offboard.safety_governor_no_avoidance:main',
         ],
     },
 )

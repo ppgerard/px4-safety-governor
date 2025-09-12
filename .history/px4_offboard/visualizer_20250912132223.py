@@ -71,8 +71,8 @@ class PX4Visualizer(Node):
 
         # Configure subscritpions
         qos_profile = QoSProfile(
-            reliability=QoSReliabilityPolicy.BEST_EFFORT,
-            history=QoSHistoryPolicy.KEEP_LAST,
+            reliability=QoSReliabilityPolicy.RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
+            history=QoSHistoryPolicy.RMW_QOS_POLICY_HISTORY_KEEP_LAST,
             depth=1,
         )
 
@@ -128,10 +128,6 @@ class PX4Visualizer(Node):
         self.safety_marker_pub = self.create_publisher(
             Marker, "/px4_visualizer/min_distance_sphere", 10
         )
-        # Base trajectory (straight line) marker publisher
-        self.base_traj_pub = self.create_publisher(
-            Marker, "/px4_visualizer/base_trajectory", 10
-        )
 
         self.vehicle_attitude = np.array([1.0, 0.0, 0.0, 0.0])
         self.vehicle_local_position = np.array([0.0, 0.0, 0.0])
@@ -164,11 +160,6 @@ class PX4Visualizer(Node):
         ]
         # safety sphere radius (meters)
         self.safety_radius = 1.5
-
-        # Base trajectory endpoints in ENU (map) frame (straight A-B line)
-        # PX4 NED waypoints: A(0,0,-5), B(20,0,-5) -> ENU: (y,x,-z) = (0,0,5) and (0,20,5)
-        self.base_traj_A = np.array([0.0, -10.0, 5.0])
-        self.base_traj_B = np.array([0.0, 30.0, 5.0])
 
     def vehicle_attitude_callback(self, msg):
         # TODO: handle NED->ENU transformation
@@ -350,24 +341,6 @@ class PX4Visualizer(Node):
             alpha=0.15,
         )
         self.safety_marker_pub.publish(safety_marker)
-
-        # Publish base straight trajectory (bold line) A->B
-        base_line = Marker()
-        base_line.action = Marker.ADD
-        base_line.header.frame_id = "map"
-        base_line.header.stamp = self.get_clock().now().to_msg()
-        base_line.ns = "base_trajectory"
-        base_line.id = 1
-        base_line.type = Marker.LINE_STRIP
-        base_line.scale.x = 0.2  # line width
-        base_line.color.r = 0.0
-        base_line.color.g = 0.0
-        base_line.color.b = 0.0
-        base_line.color.a = 1.0
-        p1 = Point(); p1.x, p1.y, p1.z = self.base_traj_A
-        p2 = Point(); p2.x, p2.y, p2.z = self.base_traj_B
-        base_line.points = [p1, p2]
-        self.base_traj_pub.publish(base_line)
 
 
 def main(args=None):

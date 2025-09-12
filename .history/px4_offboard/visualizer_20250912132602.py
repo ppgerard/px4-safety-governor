@@ -71,8 +71,8 @@ class PX4Visualizer(Node):
 
         # Configure subscritpions
         qos_profile = QoSProfile(
-            reliability=QoSReliabilityPolicy.BEST_EFFORT,
-            history=QoSHistoryPolicy.KEEP_LAST,
+            reliability=QoSReliabilityPolicy.RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
+            history=QoSHistoryPolicy.RMW_QOS_POLICY_HISTORY_KEEP_LAST,
             depth=1,
         )
 
@@ -167,8 +167,8 @@ class PX4Visualizer(Node):
 
         # Base trajectory endpoints in ENU (map) frame (straight A-B line)
         # PX4 NED waypoints: A(0,0,-5), B(20,0,-5) -> ENU: (y,x,-z) = (0,0,5) and (0,20,5)
-        self.base_traj_A = np.array([0.0, -10.0, 5.0])
-        self.base_traj_B = np.array([0.0, 30.0, 5.0])
+        self.base_traj_A = np.array([0.0, 0.0, 5.0])
+        self.base_traj_B = np.array([0.0, 20.0, 5.0])
 
     def vehicle_attitude_callback(self, msg):
         # TODO: handle NED->ENU transformation

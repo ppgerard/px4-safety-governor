@@ -25,9 +25,10 @@ setup(
     # tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+                'offboard_control = px4_offboard.offboard_control:main',
                 'visualizer = px4_offboard.visualizer:main',
-                'safety_governor = px4_offboard.safety_governor:main',
-                'safety_governor_no_avoidance = px4_offboard.safety_governor_no_avoidance:main',
+                'vtol_landing_controller = px4_offboard.vtol_landing_controller:main',
+        'safety_governor = px4_offboard.safety_governor:main',
         ],
     },
 )

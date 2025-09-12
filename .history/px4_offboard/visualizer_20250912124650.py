@@ -71,8 +71,8 @@ class PX4Visualizer(Node):
 
         # Configure subscritpions
         qos_profile = QoSProfile(
-            reliability=QoSReliabilityPolicy.BEST_EFFORT,
-            history=QoSHistoryPolicy.KEEP_LAST,
+            reliability=QoSReliabilityPolicy.RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
+            history=QoSHistoryPolicy.RMW_QOS_POLICY_HISTORY_KEEP_LAST,
             depth=1,
         )
 
@@ -124,14 +124,6 @@ class PX4Visualizer(Node):
         self.people_marker_pub = self.create_publisher(
             Marker, "/px4_visualizer/people_markers", 10
         )
-        # Safety sphere marker (min distance visualization)
-        self.safety_marker_pub = self.create_publisher(
-            Marker, "/px4_visualizer/min_distance_sphere", 10
-        )
-        # Base trajectory (straight line) marker publisher
-        self.base_traj_pub = self.create_publisher(
-            Marker, "/px4_visualizer/base_trajectory", 10
-        )
 
         self.vehicle_attitude = np.array([1.0, 0.0, 0.0, 0.0])
         self.vehicle_local_position = np.array([0.0, 0.0, 0.0])
@@ -154,21 +146,13 @@ class PX4Visualizer(Node):
 
         # Static people positions in ENU (map) frame, matching Gazebo world
         # Each entry: (x, y, z_center)
-        self.people_radius = 0.35
-        self.people_height = 7.5
-        ground_center_z = self.people_height / 2.0
         self.people_positions_enu = [
-            (1.0, 5.0, ground_center_z),
-            (-1.5, 10.0, ground_center_z),
-            (2.5, 15.0, ground_center_z),
+            (1.0, 5.0, 1.0),
+            (-1.5, 10.0, 1.0),
+            (2.5, 15.0, 1.0),
         ]
-        # safety sphere radius (meters)
-        self.safety_radius = 1.5
-
-        # Base trajectory endpoints in ENU (map) frame (straight A-B line)
-        # PX4 NED waypoints: A(0,0,-5), B(20,0,-5) -> ENU: (y,x,-z) = (0,0,5) and (0,20,5)
-        self.base_traj_A = np.array([0.0, -10.0, 5.0])
-        self.base_traj_B = np.array([0.0, 30.0, 5.0])
+        self.people_radius = 0.35
+        self.people_height = 2.0
 
     def vehicle_attitude_callback(self, msg):
         # TODO: handle NED->ENU transformation
@@ -189,14 +173,15 @@ class PX4Visualizer(Node):
         ):
             self.vehicle_path_msg.poses.clear()
         self.last_local_pos_update = Clock().now().nanoseconds / 1e9
-        # NED (PX4) -> ENU (RViz) transformation
-        # ENU.x = NED.y, ENU.y = NED.x, ENU.z = -NED.z
-        self.vehicle_local_position[0] = msg.y
-        self.vehicle_local_position[1] = msg.x
-        self.vehicle_local_position[2] = -msg.z
-        self.vehicle_local_velocity[0] = msg.vy
-        self.vehicle_local_velocity[1] = msg.vx
-        self.vehicle_local_velocity[2] = -msg.vz
+
+    # NED (PX4) -> ENU (RViz) transformation
+    # ENU.x = NED.y, ENU.y = NED.x, ENU.z = -NED.z
+    self.vehicle_local_position[0] = msg.y
+    self.vehicle_local_position[1] = msg.x
+    self.vehicle_local_position[2] = -msg.z
+    self.vehicle_local_velocity[0] = msg.vy
+    self.vehicle_local_velocity[1] = msg.vx
+    self.vehicle_local_velocity[2] = -msg.vz
 
     def trajectory_setpoint_callback(self, msg):
         # Some controllers publish velocity-only setpoints with NaN positions.
@@ -265,27 +250,6 @@ class PX4Visualizer(Node):
         msg.pose.orientation.z = 0.0
         return msg
 
-    def create_sphere_marker(self, id, center, radius, color=(0.9, 0.1, 0.1), alpha=0.15):
-        msg = Marker()
-        msg.action = Marker.ADD
-        msg.header.frame_id = "map"
-        msg.header.stamp = self.get_clock().now().to_msg()
-        msg.ns = "safety"
-        msg.id = id
-        msg.type = Marker.SPHERE
-        msg.scale.x = 2.0 * radius
-        msg.scale.y = 2.0 * radius
-        msg.scale.z = 2.0 * radius
-        msg.color.r = float(color[0])
-        msg.color.g = float(color[1])
-        msg.color.b = float(color[2])
-        msg.color.a = float(alpha)
-        msg.pose.position.x = float(center[0])
-        msg.pose.position.y = float(center[1])
-        msg.pose.position.z = float(center[2])
-        msg.pose.orientation.w = 1.0
-        return msg
-
     def append_vehicle_path(self, msg):
         self.vehicle_path_msg.poses.append(msg)
         if len(self.vehicle_path_msg.poses) > self.trail_size:
@@ -340,34 +304,6 @@ class PX4Visualizer(Node):
                 color=colors[(idx - 1) % len(colors)],
             )
             self.people_marker_pub.publish(cyl)
-
-        # Publish safety sphere centered at vehicle position
-        safety_marker = self.create_sphere_marker(
-            id=1,
-            center=self.vehicle_local_position,
-            radius=self.safety_radius,
-            color=(0.9, 0.1, 0.1),
-            alpha=0.15,
-        )
-        self.safety_marker_pub.publish(safety_marker)
-
-        # Publish base straight trajectory (bold line) A->B
-        base_line = Marker()
-        base_line.action = Marker.ADD
-        base_line.header.frame_id = "map"
-        base_line.header.stamp = self.get_clock().now().to_msg()
-        base_line.ns = "base_trajectory"
-        base_line.id = 1
-        base_line.type = Marker.LINE_STRIP
-        base_line.scale.x = 0.2  # line width
-        base_line.color.r = 0.0
-        base_line.color.g = 0.0
-        base_line.color.b = 0.0
-        base_line.color.a = 1.0
-        p1 = Point(); p1.x, p1.y, p1.z = self.base_traj_A
-        p2 = Point(); p2.x, p2.y, p2.z = self.base_traj_B
-        base_line.points = [p1, p2]
-        self.base_traj_pub.publish(base_line)
 
 
 def main(args=None):
