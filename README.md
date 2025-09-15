@@ -1,12 +1,12 @@
 # px4-safety-governor (ROS 2 Humble)
 
-Simple safety governor that drives a PX4 vehicle in Offboard velocity mode and slows down near people. Includes a minimal visualizer and two launch files.
+Simple PX4 Offboard velocity safety governor with two modes: a baseline (no avoidance) and an exponential repulsive-field avoidance. Includes a visualizer.
 
 ## Prerequisites
 - ROS 2 Humble installed and sourced in your shell
 - PX4 SITL or a real PX4 vehicle with the uXRCE-DDS bridge running (so `/fmu/*` topics are available)
 
-## Workspace setup (copy-paste)
+## Workspace setup
 1) Create a workspace in your home directory
 
 ```bash
@@ -38,17 +38,19 @@ source install/setup.bash
 ## Running
 Make sure PX4 (SITL or real) is up and publishing `/fmu/*` topics via uXRCE-DDS.
 
-- Minimal governor without geometric avoidance
+Arm the vehicle and switch to Offboard mode (e.g., using QGroundControl) for the node to take control. The node continuously publishes Offboard setpoints, but PX4 will only execute them when armed and in Offboard.
+
+- Baseline (no avoidance): flies back and forth between two waypoints.
 ```bash
 ros2 run px4_offboard safety_governor_no_avoidance
 ```
 
-- Full governor (with avoidance logic)
+- Repulsive-field avoidance: adds exponential repulsion away from people.
 ```bash
-ros2 run px4_offboard safety_governor
+ros2 run px4_offboard safety_governor_repulsive_field
 ```
 
-- Visualizer only
+- Visualizer.
 ```bash
 ros2 run px4_offboard visualizer
 ```
@@ -57,10 +59,12 @@ ros2 run px4_offboard visualizer
 ```bash
 ros2 launch px4_offboard safety_governor_no_avoidance.launch.py
 # or
-ros2 launch px4_offboard safety_governor.launch.py
+ros2 launch px4_offboard safety_governor_repulsive_field.launch.py
 # and optional RViz
 ros2 launch px4_offboard visualize.launch.py
 ```
 
-## Note
-- This package operates in PX4 local NED. People are published as a `PoseArray` in the body frame.
+## Notes
+- Operates in PX4 local NED; Offboard velocity control is used.
+- People are modeled as a static list in code by default (no subscription). Visualizer republishes their relative (body-frame) positions for RViz.
+- Repulsive-field node enforces a contextual speed cap (near vs. free) and a global limit; the repulsion magnitude scales with the current cap.

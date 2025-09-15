@@ -8,8 +8,8 @@ def generate_launch_description():
     return LaunchDescription([
         Node(
             package='px4_offboard',
-            executable='safety_governor',
-            name='safety_governor',
+            executable='safety_governor_repulsive_field',
+            name='safety_governor_repulsive_field',
             output='screen',
         )
     ])
